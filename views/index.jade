@@ -1,0 +1,29 @@
+extends layout
+
+block content
+	script(src="/socket.io/socket.io.js")
+	script.
+		//var socket = io.connect('http://localhost:3000');		
+		var socket = io.connect(window.location.search.split("/")[0]);
+		socket.emit("mqttPublish", {"topic": "presence", "message": "Message from web"});
+		function stop(){			
+			socket.emit("mqttPublish", {"topic": "rgb", "message": String.fromCharCode(0x07)});
+		}
+		function pause(){			
+			socket.emit("mqttPublish", {"topic": "rgb", "message": String.fromCharCode(0x08)});
+		}
+		function start(){			
+			socket.emit("mqttPublish", {"topic": "rgb", "message": String.fromCharCode(0x09)});
+		}
+		function setRGB(r,g,b){			
+			//socket.emit("mqttPublish", {"topic": "rgb", "message": String.fromCharCode(0x0A,r,g,b)});
+			socket.emit("mqttPublishBytes", {"topic": "rgb", "bytes": [0x0A,r,g,b]});
+		}
+	h1= title
+	p Welcome to #{title}
+	button(onclick='stop()') Stop
+	button(onclick='pause()') Pause
+	button(onclick='start()') Start
+	button(onclick='setRGB(0xFF,0x00,0x00)') Set red
+	button(onclick='setRGB(0,0xFF,0)') Set green
+	button(onclick='setRGB(0,0,0xFF)') Set blue
