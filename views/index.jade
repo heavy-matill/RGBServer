@@ -39,3 +39,48 @@ block content
 	button(onclick='slideRGB(0,0xFF,0)') Slide green
 	button(onclick='slideRGB(0,0,0xFF)') Slide blue
 	button(onclick='queueSlideRGB(0,0xFF,0,0,0,0xFF,1000,4,1)') Queue Slide green blue
+	section#sectionCommands.p Commands
+		.commandContainer
+			button#buttonSendSettings(onclick="sendSettings()") Send Settings
+			button#buttonAppendSettings(onclick="appendSettings()") Append Settings
+			button#buttonStart(onclick="start()") Start
+			button#buttonStop(onclick="stop()") Stop
+			button#buttonPause(onclick="pause()") Pause
+	section#divPreview.p Preview
+		.previewContainer
+			.scrollable
+				input#queueCount(type="hidden", value="0")
+				#divQueue.flex
+			button.colorInputAdd(onclick="addSameElemet()") Add
+	section#divMode.p Mode
+		table#tableMode
+			tr
+				td
+					input#radioMode(type="radio", name="mode", value="0")
+					label Jump
+				td
+					input#radioMode(type="radio", name="mode", value="1")
+					label Fade
+			tr
+				td
+					input#radioMode(type="radio", name="mode", value="2")
+					label Strobe
+				td
+					input#radioMode(type="radio", name="mode", value="3")
+					label Pulse
+	section#divEffectTime.p
+		table#tableTime
+			tr
+				td
+					label Effect Time
+				td
+					input(type="range")
+				td
+					input(type="number")
+			tr
+				td
+					label Holding Time
+				td
+					input(type="range")
+				td
+					input(type="number")					
