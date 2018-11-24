@@ -2,31 +2,13 @@ extends layout
 
 block content
 	script(src="/socket.io/socket.io.js")
+	script(src="javascripts/jscolor.js")
+	script(src="javascripts/index_client.js")
 	script.
-		//var socket = io.connect('http://localhost:3000');		
-		var socket = io.connect(window.location.search.split("/")[0]);
-		socket.emit("mqttPublish", {"topic": "presence", "message": "Message from web"});
-		function start(){			
-			socket.emit("mqttPublish", {"topic": "rgb", "message": String.fromCharCode(0x00)});
-		}
-		function stop(){			
-			socket.emit("mqttPublish", {"topic": "rgb", "message": String.fromCharCode(0x01)});
-		}
-		function pause(){			
-			socket.emit("mqttPublish", {"topic": "rgb", "message": String.fromCharCode(0x02)});
-		}
-		function setRGB(r,g,b){			
-			//socket.emit("mqttPublish", {"topic": "rgb", "message": String.fromCharCode(0x0A,r,g,b)});
-			socket.emit("mqttPublishBytes", {"topic": "rgb", "bytes": [0x10,r,g,b]});
-		}
-		function slideRGB(r,g,b){			
-			//socket.emit("mqttPublish", {"topic": "rgb", "message": String.fromCharCode(0x0A,r,g,b)});
-			socket.emit("mqttPublishBytes", {"topic": "rgb", "bytes": [0x11,r,g,b]});
-		}
-		function queueSlideRGB(r1,g1,b1,r2,g2,b2,t,n_rep,b_rep){			
-			//socket.emit("mqttPublish", {"topic": "rgb", "message": String.fromCharCode(0x0A,r,g,b)});
-			socket.emit("mqttPublishBytes", {"topic": "rgb", "bytes": [0x14,r1,g1,b1,r2,g2,b2,t>>8,t-(t>>8),n_rep,b_rep]});
-		}
+		document.addEventListener('DOMContentLoaded', function() {
+			onLoadFunction();
+		}, false);
+
 	h1= title
 	p Welcome to #{title}
 	button(onclick='start()') Start
@@ -39,48 +21,87 @@ block content
 	button(onclick='slideRGB(0,0xFF,0)') Slide green
 	button(onclick='slideRGB(0,0,0xFF)') Slide blue
 	button(onclick='queueSlideRGB(0,0xFF,0,0,0,0xFF,1000,4,1)') Queue Slide green blue
-	section#sectionCommands.p Commands
+	section#secCommands.p Commands
 		.commandContainer
 			button#buttonSendSettings(onclick="sendSettings()") Send Settings
 			button#buttonAppendSettings(onclick="appendSettings()") Append Settings
 			button#buttonStart(onclick="start()") Start
 			button#buttonStop(onclick="stop()") Stop
 			button#buttonPause(onclick="pause()") Pause
-	section#divPreview.p Preview
+	section#secPreview.p Preview
 		.previewContainer
 			.scrollable
 				input#queueCount(type="hidden", value="0")
 				#divQueue.flex
-			button.colorInputAdd(onclick="addSameElemet()") Add
-	section#divMode.p Mode
+			button#colorInputAdd(onclick="addAmimation()") Add
+	section#secColors.p Colors
+		table#tableColors
+			tr
+				td
+					input#colorInput1.colorInput
+				td
+					button#buttonColorSwitch(onclick="switchColorInputs()") Switch
+				td
+					input#colorInput2.colorInput
+			tr
+				td
+					button#buttonColor1First First					
+					button#buttonColor1Previous Previous
+					button#buttonColor1Next Next
+					button#buttonColor1Last Last
+				td
+				td
+					button#buttonColor2First First				
+					button#buttonColor2Previous Previous
+					button#buttonColor2Next Next
+					button#buttonColor2Last Last
+	section#secMode.p Mode
 		table#tableMode
 			tr
 				td
-					input#radioMode(type="radio", name="mode", value="0")
+					input#radioMode0(type="radio", name="radioMode", value="0", checked="true")
 					label Jump
 				td
-					input#radioMode(type="radio", name="mode", value="1")
+					input#radioMode1(type="radio", name="radioMode", value="1")
 					label Fade
 			tr
 				td
-					input#radioMode(type="radio", name="mode", value="2")
+					input#radioMode2(type="radio", name="radioMode", value="2")
 					label Strobe
 				td
-					input#radioMode(type="radio", name="mode", value="3")
+					input#radioMode3(type="radio", name="radioMode", value="3")
 					label Pulse
-	section#divEffectTime.p
+	section#secEffectTime.p
 		table#tableTime
 			tr
 				td
-					label Effect Time
+					label Duration
+				td(allign-items="center")
+					input(type="range", value=78, min=0, max=100, onchange="this.parentElement.nextElementSibling.childNodes[0].value=Math.round(logslDur.value(this.value)*100)/100")
 				td
-					input(type="range")
+					input#inputDuration(type="number", value=10, min=0.01, max=65.535, step=0.1, onchange="this.parentElement.previousElementSibling.childNodes[0].value=logslDur.position(this.value)")
 				td
-					input(type="number")
+					label s
+			tr#trPercOn
+				td
+					label On-Time
+				td
+					input(type="range", min=0, max=100, value=50, onchange="this.parentElement.nextElementSibling.childNodes[0].value=this.value")
+				td
+					input#inputPercOn(type="number", min=0, max=100, value=50, onchange="this.parentElement.nextElementSibling.childNodes[0].value=this.value")
+				td
+					label %
 			tr
 				td
-					label Holding Time
+					label Repititions
 				td
-					input(type="range")
+					input(type="range", min=0, max=100, value=0, onchange="this.parentElement.nextElementSibling.childNodes[0].value=Math.round(logslRep.value(this.value))-1")
 				td
-					input(type="number")					
+					input#inputNumRep(type="number", min=0, max=255, value=0, onchange="this.parentElement.nextElementSibling.childNodes[0].value=logslRep.position(this.value)")
+				td
+					label 
+			tr
+				td
+					label Re-Queue
+				td
+					input(type="checkbox")
