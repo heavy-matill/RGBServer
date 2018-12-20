@@ -1,0 +1,31 @@
+body {
+    font-family: Tahoma, Verdana, Segoe, sans-serif;
+	width:620px;
+}
+.flex {
+	/*background-color: #7887AB;*/
+	display: flex;
+}
+.scrollable{
+	display: flex;
+
+	white-space: nowrap;
+	overflow-y: hidden;
+	overflow-x: scroll;
+	-webkit-overflow-scrolling: touch;
+	max-width: 600px;
+
+}
+.animationElement{
+    position:relative; 
+    width:100px; 
+    height:60px;
+}
+.hidden{
+    display: none;
+}
+.delButton{
+    position:absolute;
+    top:0;
+    right:0;
+}
