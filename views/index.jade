@@ -36,21 +36,27 @@ block content
 				#divQueue.flex
 					div#anEl1.animationElement(onclick="loadAnimation(this)", style="background-image: linear-gradient(to right, rgb(255,0,0), rgb(0,255,0)); ")
 						input#del1.delButton(type="button", onclick="this.parentNode.parentNode.removeChild(this.parentNode);", value="X")
-						input.hidden(name="Duration", type="number", value=10)
-						input.hidden(name="On-Time", type="number", value=10)
-						input.hidden(name="Repititions", type="number", value=10)
-						input.hidden(name="Re-Queue", type="number", value=1)
-						input.hidden(name="Color1", type="text", value="FF0000")
-						input.hidden(name="Color2", type="text", value="00FF00")
-						input.hidden(name="Mode", type="number", value=1)
-					div#anEl1.animationElement(style="background-image: linear-gradient(to right, #FFFF00 20%, #00FFFF 80%); ")
+						input.id.hidden(name="Id", type="number", value=1)
+						input#t1.hidden(name="Duration", type="number", value=10)
+						input#p1.hidden(name="On-Time", type="number", value=10)
+						input#nr1.hidden(name="Repititions", type="number", value=10)
+						input#br1.hidden(name="Re-Queue", type="number", value=1)
+						input#c1r1.hidden(name="Color1R", type="number", value=255)
+						input#c1g1.hidden(name="Color1G", type="number", value=0)
+						input#c1b1.hidden(name="Color1B", type="number", value=0)
+						input#c2r1.hidden(name="Color2R", type="number", value=0)
+						input#c2g1.hidden(name="Color2G", type="number", value=255)
+						input#c2b1.hidden(name="Color2B", type="number", value=0)
+						input#mode1.hidden(name="Mode", type="number", value=1)
+					div#anEl2.animationElement(style="background-image: linear-gradient(to right, #FFFF00 20%, #00FFFF 80%); ")
 						input(type="button", value="X", style="position:absolute;top:0;right:0;")
-					div#anEl1.animationElement(style="background-image: linear-gradient(to right, #FFFF00 20%, #00FFFF 0); ")
+						input.id.hidden(name="Id", type="number", value=2)
+						input#t2.hidden(name="Duration", type="number", value=100)
+					div#anEl3.animationElement(style="background-image: linear-gradient(to right, #FFFF00 20%, #00FFFF 0); ")
 						input(type="button", value="X", style="position:absolute;top:0;right:0;")
-					div#anEl1.animationElement
-						label(style="position:absolute;top:50%;right:50%;") X
-						input(type="button", value="X", style="position:absolute;top:0;right:0;visibility:hidden;")
-			button#colorInputAdd(onclick="addAmimation()") Add
+						input.id.hidden(name="Id", type="number", value=3)
+						input#t3.hidden(name="Duration", type="number", value=1000)
+					button#colorInputAdd(onclick="addAnimation(getAnimationData())") Add
 	section#secColors.p Colors
 		table#tableColors
 			tr

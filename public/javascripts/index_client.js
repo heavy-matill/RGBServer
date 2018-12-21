@@ -1,4 +1,12 @@
 var socket = io.connect('http://localhost:3000');		
+// allow live mode with checkbox?
+// local id counter, 
+// local active id
+// local active animation/frame?
+// change settings (all but color) for all nodes in queue
+// next previous etc.
+// move 
+// select nodes running, select groups (finished if at least one node responded with finish)
 //var socket = io.connect(window.location.search.split("/")[0]);
 socket.emit("mqttPublish", {"topic": "presence", "message": "Message from web"});
 function start(){			
@@ -22,178 +30,164 @@ function queueSlideRGB(r1,g1,b1,r2,g2,b2,t,n_rep,b_rep){
     //socket.emit("mqttPublish", {"topic": "rgb", "message": String.fromCharCode(0x0A,r,g,b)});
     socket.emit("mqttPublishBytes", {"topic": "rgb", "bytes": [0x14,r1,g1,b1,r2,g2,b2,t>>8,t-(t>>8),n_rep,b_rep]});
 }
-function loadAnimation(input){
-    var duration = input.childNodes[1].value;
-    document.getElementById('rangeDuration').value = logslDur.position(duration);
-    document.getElementById('numberDuration').value = duration;
 
-    var percon = input.childNodes[2].value;
-    document.getElementById('rangePercOn').value = percon;
-    document.getElementById('numberPercOn').value = percon;
+function loadAnimationDataSettings(id, animationData){
+    document.getElementById('rangeDuration').value = logslDur.position(animationData.t/100);
+    document.getElementById('numberDuration').value = animationData.t/100;
 
-    var numrep = input.childNodes[3].value;
-    document.getElementById('rangeNumRep').value = numrep;
-    document.getElementById('numberNumRep').value = numrep;
+    document.getElementById('rangePercOn').value = animationData.p;
+    document.getElementById('numberPercOn').value = animationData.p;
 
-    var b_rep = input.childNodes[4].value;
-    if (b_rep){
-        document.getElementById('checkReQueue').checked = true;
-    }else{
-        document.getElementById('checkReQueue').checked = false;
-    }
+    document.getElementById('rangeNumRep').value = animationData.nr;
+    document.getElementById('numberNumRep').value = animationData.nr;
 
-    var color1 = input.childNodes[5].value;
+    document.getElementById('checkReQueue').checked = animationData.br;
+
+    var color1 = byteToHexString(animationData.c1.r)+byteToHexString(animationData.c1.g)+byteToHexString(animationData.c1.b);    
     var colorInput1 = document.getElementById('colorInput1')
     colorInput1.value = color1;
     colorInput1.dispatchEvent(new Event('input'));
 
-    var color2 = input.childNodes[6].value;
+    var color2 = byteToHexString(animationData.c2.r)+byteToHexString(animationData.c2.g)+byteToHexString(animationData.c2.b);    
     var colorInput2 = document.getElementById('colorInput2')
     colorInput2.value = color2;
     colorInput2.dispatchEvent(new Event('input'));
 
-
-    var mode = input.childNodes[7].value;
-    document.getElementById('radioMode'+mode).checked = true;
-
+    document.getElementById('radioMode'+animationData.mode).checked = true;
 }
-function addAnimation(){
 
+function loadAnimation(id){
+    for (el of queue_list){
+        if (el.id == id)
+        {
+            loadAnimationDataSettings(id, el.animationData);
+            return;
+        }
+    }
+    console.log("Warning: Id ", id, " not found while using loadAnimation(Id).");    
 }
-function setAmimation(divAnimation){
-    let mode = getMode();
-    let color1 = document.getElementById("colorInput1").value;
-    let color2 = document.getElementById("colorInput2").value;
-    let percOn = document.getElementById("numberPercOn").value;
 
-    //socket.emit("addAmimation", {"topic": "rgb", "bytes": [0x14,r1,g1,b1,r2,g2,b2,t>>8,t-(t>>8),n_rep,b_rep]});
-    var parentDiv = document.getElementById('divQueue');
+function getAnimationData(){
+    let mode = getMode()
+    let c1 = document.getElementById("colorInput1").value;
+    let c2 = document.getElementById("colorInput2").value;
+    let t = Math.floor(document.getElementById("numberDuration").value*100);
+    let p = document.getElementById("numberPercOn").value*1;
+    let nr = document.getElementById("numberNumRep").value*1;
+    let br = document.getElementById("checkReQueue").checked;
 
-	var inputQueueCount = document.getElementById('queueCount');
-	//var count = inputQueueCount.value-(-1);
-	//inputQueueCount.value = count;
+    let c1r = parseInt(c1.slice(0,1), 16);
+    let c1g = parseInt(c1.slice(2,3), 16);
+    let c1b = parseInt(c1.slice(4,5), 16);
+    let c2r = parseInt(c2.slice(0,1), 16);
+    let c2g = parseInt(c2.slice(2,3), 16);
+    let c2b = parseInt(c2.slice(4,5), 16);
 
-	var newDiv = document.createElement('div');
+    return {mode: mode, c1: {r: c1r, g: c1g, b: c1b}, c2: {r: c2r, g: c2g, b: c2b}, t: t, p: p, nr: nr, br: br};
+}
 
-    newDiv.className = "animationElement";
-    newDiv.setAttribute("onclick", "loadAnimation(this);");
-    
+function addAnimation(animationData){
+    //console.log("append: ", getAnimationData());
+    // get new id
+    var id = 123
+    queue_list.push({id: id, animationData: animationData});
+    addAnimationElement(id, animationData);
+}
 
-	var divIdName = 'anEl'+count;
-    newDiv.id = divIdName;
-    switch (mode){
+function setAnimation(id, animationData){
+    console.log("change id: ", id, " to: ", animationData);
+    // store curently selected id somewhere
+    for (el of queue_list){
+        if (el.id == id)
+        {
+            loadAnimationDataSettings(id, el.animationData);
+            setAnimationElement(id, animationData);
+            return;
+        }
+    }
+    console.log("Warning: Id ", id, " not found while using setAnimation(Id, animationData)."); 
+}
+
+function displayAnimationElements(animationDataList){
+    var divParent = document.getElementById('divQueue');
+    divParent.innerHTML = "";
+    for ( an of animationDataList ){
+        addAnimationElement(an.id, an.animationData);
+    }
+}
+
+function setAnimationElement(id, animationData){
+    let divAnimationElement = document.getElementById("animationElement"+id);
+    switch (animationData.mode % 2){
         case 0:
-            newDiv.style.backgroundImage = "linear-gradient(to right, #"+color1+" "+percOn+"%, #"+color2+" 0)";
+            divAnimationElement.style.backgroundImage = "linear-gradient(to right, rgb("+animationData.c1.r+","+animationData.c1.g+","+animationData.c1.b+") "+animationData.p+"%, rgb("+animationData.c2.r+","+animationData.c2.g+","+animationData.c2.b+") 0)";
             break;
 
         case 1:
-            newDiv.style.backgroundImage = "linear-gradient(to right, #"+color1+" 20%, #"+color2+" 80%)"; 
-            break;
-
-        case 2:
-            newDiv.style.backgroundImage = "linear-gradient(to right, #"+color1+" "+percOn+"%, #000000 0)";
-            color2 = "000000";
-            break;
-
-        case 3:
-            newDiv.style.backgroundImage = "linear-gradient(to right, #"+color1+" 20%, #000000 80%)"; 
-            color2 = "000000";
-            break;            
+            divAnimationElement.style.backgroundImage = "linear-gradient(to right, rgb("+animationData.c1.r+","+animationData.c1.g+","+animationData.c1.b+") 20%, rgb("+animationData.c2.r+","+animationData.c2.g+","+animationData.c2.b+") 80%)";
+            break;          
     }
+}
+
+function byteToHexString(d) {
+    return  ("0"+(Number(d).toString(16))).slice(-2).toUpperCase()
+}
+
+function addAnimationElement(id, animationData){
+    //socket.emit("addAmimation", {"topic": "rgb", "bytes": [0x14,r1,g1,b1,r2,g2,b2,t>>8,t-(t>>8),n_rep,b_rep]});
+    var divParent = document.getElementById('divQueue');
+
+	var divAnimationElment = document.createElement('div');
+
+    divAnimationElment.className = "animationElement";
+    divAnimationElment.setAttribute("onclick", "loadAnimation("+id+");");
+    
+
+	var divIdName = 'animationElement'+id;
+    divAnimationElment.id = divIdName;
+    
 
     var button = document.createElement('button')
     button.className = "delButton"
-    button.setAttribute("onclick", "this.parentNode.parentNode.removeChild(this.parentNode);");
+    button.setAttribute("onclick", "removeAnimation("+id+");");
     button.innerHTML = "X";
-    newDiv.appendChild(button);
-
-    var inputDuration = document.createElement("input");
-    inputDuration.type = "number"; 
-    inputDuration.className = "hidden"; 
-    inputDuration.setAttribute("value", document.getElementById("numberDuration").value);
-    newDiv.appendChild(inputDuration);
-
-    var inputPercOn = document.createElement("input");
-    inputPercOn.type = "number"; 
-    inputPercOn.className = "hidden"; 
-    inputPercOn.setAttribute("value", document.getElementById("numberPercOn").value);
-    newDiv.appendChild(inputPercOn);    
-
-    var inputNumRep = document.createElement("input");
-    inputNumRep.type = "number"; 
-    inputNumRep.className = "hidden"; 
-    inputNumRep.setAttribute("value", document.getElementById("numberNumRep").value);
-    newDiv.appendChild(inputNumRep); 
-
-    var inputReQueue = document.createElement("input");
-    inputReQueue.type = "number"; 
-    inputReQueue.className = "hidden"; 
-    inputReQueue.setAttribute("value", document.getElementById("checkReQueue").checked);
-    newDiv.appendChild(inputReQueue);     
-
-    var inputColor1 = document.createElement("input");
-    inputColor1.type = "text"; 
-    inputColor1.className = "hidden"; 
-    inputColor1.setAttribute("value", color1);
-    newDiv.appendChild(inputColor1);  
-
-    var inputColor2 = document.createElement("input");
-    inputColor2.type = "text"; 
-    inputColor2.className = "hidden"; 
-    inputColor2.setAttribute("value", color2);
-    newDiv.appendChild(inputColor2);
-
-    let hiddenMode = document.createElement("input");
-    hiddenMode.type = "number";
-    hiddenMode.className = "hidden";
-    hiddenMode.setAttribute("value", getMode());
-    newDiv.appendChild(hiddenMode);
+    divAnimationElment.appendChild(button);
     
-	parentDiv.appendChild(newDiv);
+    var inputId = document.createElement("input");
+    inputId.type = "number"; 
+    inputId.className = "hidden"; 
+    inputId.setAttribute("value", id);
+    divAnimationElment.appendChild(inputId);
 
-	/*var colorInput = document.createElement('input');
-
-	colorInput.className='colorInput';
-
-	var picker = new jscolor(colorInput);
-	picker.backgroundColor='#666';
-	//picker.width=250;
-	//picker.height=150;
-	picker.insertColor='#FFF';
-	picker.borderColor='#FFF';
-	//picker.position='left';
-	picker.fromString(colorString);
-	newDiv.appendChild(colorInput);
-
-	var closeButton = document.createElement('button');
-	closeButton.className='closeButton';
-	closeButton.onclick=function() {
-		if(document.getElementsByClassName('colorInput').length>1)
-			removeElement(divIdName);
-	};
-	closeButton.innerHTML='x';
-	newDiv.appendChild(closeButton);
-
-
-	parentDiv.appendChild(newDiv);*/
-}
-function addSameElement()
-{
-	var colorInputs = document.getElementsByClassName('colorInput');
-	addElement(colorInputs[colorInputs.length-1].value);
-}
-function removeElement(id) {
-	var elem = document.getElementById(id);
-	elem.remove();
+    divParent.appendChild(divAnimationElment);
+    
+    setAnimationElement(id, animationData);
 }
 
-function getMode()
-{
+function removeAnimation(id){
+    // if global mode? from rgb controller call socket remove animationelement.
+    removeAnimationElement(id);
+    var i = 0;
+    for (var i = 0; i < queue_list.length; i++){
+        if (queue_list[i].id == id)
+        {
+            queue_list.splice(i,1);
+            console.log("removed animation with id: ", id);
+            return;
+        }
+    }
+    console.log("Warning: Id ", id, " not found while using removeAnimation(Id).");     
+}
+
+function removeAnimationElement(id) {
+	document.getElementById("animationElement"+id).remove();
+}
+
+function getMode(){
     return parseInt(document.querySelector('input[name="radioMode"]:checked').value);
 }
 
-function modeSwitch()
-{
+function modeSwitch(){
     var mode = getMode();
 
 	// if flash and pulse modes exist
@@ -226,9 +220,7 @@ function switchColorInputs(){
     colorInput2.value = tempColor;
     colorInput1.dispatchEvent(new Event('input'));
     colorInput2.dispatchEvent(new Event('input'));
-
 }
-
 
 function LogSlider(options) {
     options = options || {};
@@ -273,5 +265,18 @@ function onLoadFunction(){
         radios[i].onclick = modeSwitch;
     }
     //document.querySelector('input[type=radio][name=radioMode]').addEventListener('change', modeSwitch);
+    displayAnimationElements(queue_list);
+}
+
+function sendSettings(){
+    // for queue_list....
+    var parentDiv = document.getElementById('divQueue');
+    for ( child of parentDiv.childNodes ){
+        id = child.getElementsByClassName("id")[0].value;
+        console.log({mode: document.getElementById("t"+id).value});
+    }
 }
 console.log("Script loaded");
+
+var queue_list = [{id: 0, animationData: {mode: 0, c1: {r: 255, g: 129, b: 0}, c2: {r: 0, g: 0, b: 0}, t: 1025, p: 40, nr: 0, br: false}},{id: 1, animationData: {mode: 1, c1: {r: 255, g: 0, b: 0}, c2: {r: 0, g: 0, b: 255}, t: 1025, p: 20, nr: 0, br: false}}];
+    

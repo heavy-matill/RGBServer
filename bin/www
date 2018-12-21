@@ -4,6 +4,8 @@
  * Module dependencies.
  */
 
+var nconf = require('nconf');
+nconf.argv().env().file({ file: 'config.json' });
 var app = require('../app');
 var debug = require('debug')('rgbserver:server');
 var http = require('http');
@@ -97,4 +99,3 @@ function onListening() {
 var socketApi = require('../controllers/socketController');
 var io = socketApi.io;
 io.attach(server);
-
