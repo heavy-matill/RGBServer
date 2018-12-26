@@ -24,11 +24,11 @@ block content
 	button(onclick='queueSlideRGB(0,0xFF,0,0,0,0xFF,1000,4,1)') Queue Slide green blue
 	section#secCommands.p Commands
 		.commandContainer
-			button#buttonSendSettings(onclick="sendSettings()") Send Settings
-			button#buttonAppendSettings(onclick="appendSettings()") Append Settings
-			button#buttonStart(onclick="start()") Start
-			button#buttonStop(onclick="stop()") Stop
-			button#buttonPause(onclick="pause()") Pause
+			button#buttonStartSettings(onclick="sendStartSettings()") Start Settings
+			button#buttonAppendSettings(onclick="sendAppendSettings()") Append Settings
+			button#buttonStart(onclick="sendStart()") Start
+			button#buttonStop(onclick="sendStop()") Stop
+			button#buttonPause(onclick="sendPause()") Pause
 	section#secPreview.p Preview
 		.previewContainer
 			.scrollable
@@ -131,11 +131,11 @@ block content
 		table
 			tr
 				td
-					button Apply
+					button(onclick="applySettings();") Apply
 				td
 					button Send now
 				td
-					button Reset
+					button(onclick="resetSettings();") Reset
 		
 		
 		

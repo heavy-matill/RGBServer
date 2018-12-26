@@ -8,15 +8,16 @@ var socket = io.connect('http://localhost:3000');
 // move 
 // select nodes running, select groups (finished if at least one node responded with finish)
 //var socket = io.connect(window.location.search.split("/")[0]);
+var idCur = 0;
 socket.emit("mqttPublish", {"topic": "presence", "message": "Message from web"});
-function start(){			
-    socket.emit("mqttPublish", {"topic": "rgb", "message": String.fromCharCode(0x00)});
+function sendStart(){			
+    socket.emit("mqttPublishBytes", {"topic": "rgb", "bytes": [byteStartAnimation]});
 }
-function stop(){			
-    socket.emit("mqttPublish", {"topic": "rgb", "message": String.fromCharCode(0x01)});
+function sendStop(){			
+    socket.emit("mqttPublishBytes", {"topic": "rgb", "bytes": [byteStopAnimation]});
 }
-function pause(){			
-    socket.emit("mqttPublish", {"topic": "rgb", "message": String.fromCharCode(0x02)});
+function sendPause(){			
+    socket.emit("mqttPublishBytes", {"topic": "rgb", "bytes": [bytePauseAnimation]});
 }
 function setRGB(r,g,b){			
     //socket.emit("mqttPublish", {"topic": "rgb", "message": String.fromCharCode(0x0A,r,g,b)});
@@ -28,7 +29,7 @@ function slideRGB(r,g,b){
 }
 function queueSlideRGB(r1,g1,b1,r2,g2,b2,t,n_rep,b_rep){			
     //socket.emit("mqttPublish", {"topic": "rgb", "message": String.fromCharCode(0x0A,r,g,b)});
-    socket.emit("mqttPublishBytes", {"topic": "rgb", "bytes": [0x14,r1,g1,b1,r2,g2,b2,t>>8,t-(t>>8),n_rep,b_rep]});
+    socket.emit("mqttPublishBytes", {"topic": "rgb", "bytes": [0x14,r1,g1,b1,r2,g2,b2,t>>8,t%(2<<7),n_rep,b_rep]});
 }
 
 function loadAnimationDataSettings(id, animationData){
@@ -57,7 +58,15 @@ function loadAnimationDataSettings(id, animationData){
 }
 
 function loadAnimation(id){
-    for (el of queue_list){
+    for (anEl of document.getElementsByClassName("animationElementMarked")){
+        anEl.classList.remove("animationElementMarked");
+    }    
+    var animationElement = document.getElementById('animationElement'+id);
+    if (animationElement){        
+        idCur = id;
+        animationElement.classList.add("animationElementMarked");
+    }
+    for (el of animationQueue){
         if (el.id == id)
         {
             loadAnimationDataSettings(id, el.animationData);
@@ -76,12 +85,12 @@ function getAnimationData(){
     let nr = document.getElementById("numberNumRep").value*1;
     let br = document.getElementById("checkReQueue").checked;
 
-    let c1r = parseInt(c1.slice(0,1), 16);
-    let c1g = parseInt(c1.slice(2,3), 16);
-    let c1b = parseInt(c1.slice(4,5), 16);
-    let c2r = parseInt(c2.slice(0,1), 16);
-    let c2g = parseInt(c2.slice(2,3), 16);
-    let c2b = parseInt(c2.slice(4,5), 16);
+    let c1r = parseInt(c1.slice(0,2), 16);
+    let c1g = parseInt(c1.slice(2,4), 16);
+    let c1b = parseInt(c1.slice(4,6), 16);
+    let c2r = parseInt(c2.slice(0,2), 16);
+    let c2g = parseInt(c2.slice(2,4), 16);
+    let c2b = parseInt(c2.slice(4,6), 16);
 
     return {mode: mode, c1: {r: c1r, g: c1g, b: c1b}, c2: {r: c2r, g: c2g, b: c2b}, t: t, p: p, nr: nr, br: br};
 }
@@ -90,17 +99,26 @@ function addAnimation(animationData){
     //console.log("append: ", getAnimationData());
     // get new id
     var id = 123
-    queue_list.push({id: id, animationData: animationData});
+    animationQueue.push({id: id, animationData: animationData});
     addAnimationElement(id, animationData);
+}
+
+function applySettings(){
+    setAnimation(idCur, getAnimationData());
+}
+
+function resetSettings(){
+    loadAnimation(idCur);
 }
 
 function setAnimation(id, animationData){
     console.log("change id: ", id, " to: ", animationData);
     // store curently selected id somewhere
-    for (el of queue_list){
+    for (el of animationQueue){
         if (el.id == id)
         {
-            loadAnimationDataSettings(id, el.animationData);
+            //loadAnimationDataSettings(id, el.animationData);
+            el.animationData = animationData;
             setAnimationElement(id, animationData);
             return;
         }
@@ -129,7 +147,7 @@ function setAnimationElement(id, animationData){
     }
 }
 
-function byteToHexString(d) {
+function byteToHexString(d) {    
     return  ("0"+(Number(d).toString(16))).slice(-2).toUpperCase()
 }
 
@@ -168,10 +186,10 @@ function removeAnimation(id){
     // if global mode? from rgb controller call socket remove animationelement.
     removeAnimationElement(id);
     var i = 0;
-    for (var i = 0; i < queue_list.length; i++){
-        if (queue_list[i].id == id)
+    for (var i = 0; i < animationQueue.length; i++){
+        if (animationQueue[i].id == id)
         {
-            queue_list.splice(i,1);
+            animationQueue.splice(i,1);
             console.log("removed animation with id: ", id);
             return;
         }
@@ -265,18 +283,54 @@ function onLoadFunction(){
         radios[i].onclick = modeSwitch;
     }
     //document.querySelector('input[type=radio][name=radioMode]').addEventListener('change', modeSwitch);
-    displayAnimationElements(queue_list);
+    displayAnimationElements(animationQueue);
 }
 
-function sendSettings(){
+function bytesAppendAnimationQueue(animationQueue){
     // for queue_list....
-    var parentDiv = document.getElementById('divQueue');
-    for ( child of parentDiv.childNodes ){
-        id = child.getElementsByClassName("id")[0].value;
-        console.log({mode: document.getElementById("t"+id).value});
+    var byteArray = [];
+    for (anim of animationQueue){
+        byteArray.push(...bytesFromAnimationData(anim.animationData));
     }
+    return byteArray;
 }
+
+function bytesFromAnimationData(animationData){
+    var byteArray = [0x14+(animationData.mode%2), 
+        animationData.c1.r, animationData.c1.g, animationData.c1.b,
+        animationData.c2.r, animationData.c2.g, animationData.c2.b,
+        animationData.t>>8, animationData.t%(2<<7)];
+    if ((animationData.mode%2)==0){
+        byteArray.push(animationData.p);
+    }
+    byteArray.push(animationData.nr);
+    byteArray.push(animationData.br*1);
+    console.log(byteArray);
+    return byteArray;
+}
+
+function bytesStartAnimationQueue(animationQueue){
+    var byteArray = [byteStopAnimation, 
+    ...bytesAppendAnimationQueue(animationQueue),
+    byteStartAnimation];
+    console.log(byteArray);
+    return byteArray;
+}
+
+function sendStartSettings(){    
+    socket.emit("mqttPublishBytes", {"topic": "rgb", "bytes": bytesStartAnimationQueue(animationQueue)});
+}
+
+function sendAppendSettings(){    
+    console.log(bytesAppendAnimationQueue(animationQueue));
+    socket.emit("mqttPublishBytes", {"topic": "rgb", "bytes": bytesAppendAnimationQueue(animationQueue)});
+    //socket.emit("mqttPublish", {"topic": "rgb2", "message": bytesAppendAnimationQueue(animationQueue)});
+}
+
+const byteStartAnimation = 0x00;
+const byteStopAnimation = 0x01;
+const bytePauseAnimation = 0x02;
 console.log("Script loaded");
 
-var queue_list = [{id: 0, animationData: {mode: 0, c1: {r: 255, g: 129, b: 0}, c2: {r: 0, g: 0, b: 0}, t: 1025, p: 40, nr: 0, br: false}},{id: 1, animationData: {mode: 1, c1: {r: 255, g: 0, b: 0}, c2: {r: 0, g: 0, b: 255}, t: 1025, p: 20, nr: 0, br: false}}];
+var animationQueue = [{id: 0, animationData: {mode: 0, c1: {r: 255, g: 129, b: 0}, c2: {r: 0, g: 0, b: 0}, t: 1025, p: 40, nr: 5, br: true}},{id: 1, animationData: {mode: 1, c1: {r: 255, g: 0, b: 0}, c2: {r: 0, g: 0, b: 255}, t: 1025, p: 20, nr: 4, br: false}}];
     

@@ -3,13 +3,15 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+var os = require('os');
+
 
 //var fft = require('./controllers/fftController')
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 
-var deviceController = require('./controllers/deviceController');
+//var deviceController = require('./controllers/deviceController');
 
 var app = express();
 

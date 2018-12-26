@@ -21,6 +21,11 @@ body {
     width:100px; 
     height:60px;
 }
+.animationElementMarked{	
+	border: 2px solid black;	
+    width:96px; 
+    height:56px;
+}
 .hidden{
     display: none;
 }

@@ -12,7 +12,17 @@ io.on('connection', function(socket){
         mqttController.publish(data.topic, data.message);
     });
     socket.on('mqttPublishBytes', function(data){
-        mqttController.publish(data.topic, new Buffer(data.bytes));
+        var strBytes = "";
+        for (val of data.bytes){
+            if (val < 0x10){
+                strBytes = strBytes+"0";
+            }
+            strBytes = strBytes+val.toString(16);
+        }
+        //var strBytes = String.fromCharCode(...(data.bytes));
+        strBytes = strBytes.toUpperCase();
+        console.log(strBytes);
+        mqttController.publish(data.topic, strBytes);
     });
     socket.on('addAnimation', function(num_list,mode,data){
         rgbController.addAnimation(num_list,mode,data);
