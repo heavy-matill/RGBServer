@@ -9,6 +9,7 @@ var socket = io.connect('http://localhost:3000');
 // select nodes running, select groups (finished if at least one node responded with finish)
 //var socket = io.connect(window.location.search.split("/")[0]);
 var idCur = 0;
+var idNext = 0;
 socket.emit("mqttPublish", {"topic": "presence", "message": "Message from web"});
 function sendStart(){			
     socket.emit("mqttPublishBytes", {"topic": "rgb", "bytes": [byteStartAnimation]});
@@ -57,7 +58,7 @@ function loadAnimationDataSettings(id, animationData){
     document.getElementById('radioMode'+animationData.mode).checked = true;
 }
 
-function loadAnimation(id){
+function highlightAnimationElement(id){
     for (anEl of document.getElementsByClassName("animationElementMarked")){
         anEl.classList.remove("animationElementMarked");
     }    
@@ -66,6 +67,13 @@ function loadAnimation(id){
         idCur = id;
         animationElement.classList.add("animationElementMarked");
     }
+}
+
+function loadAnimation(id){  
+    // Highlight Animation
+    highlightAnimationElement(id);
+    //scroll to animation
+    // load Animation  
     for (el of animationQueue){
         if (el.id == id)
         {
@@ -95,14 +103,26 @@ function getAnimationData(){
     return {mode: mode, c1: {r: c1r, g: c1g, b: c1b}, c2: {r: c2r, g: c2g, b: c2b}, t: t, p: p, nr: nr, br: br};
 }
 
-function addAnimation(animationData){
+function addAnimation(animationData, beforeId=-1){
     //console.log("append: ", getAnimationData());
     // get new id
-    var id = 123
-    animationQueue.push({id: id, animationData: animationData});
-    addAnimationElement(id, animationData);
+    var id = idNext++;
+    var newAnimation = {id: id, animationData: animationData};
+    console.log("append: ", newAnimation);
+    if (beforeId==-1){
+        animationQueue.push(newAnimation);
+    } else {        
+        pos = animationQueue.findIndex(el => el.id == beforeId);
+        if (pos>=0){
+            animationQueue.splice(pos,0,newAnimation);
+        } else {
+            animationQueue.unshift(newAnimation);
+        }
+    }
+    //addAnimationElement(id, animationData, pos);
+    displayAnimationElements(animationQueue);
+    loadAnimation(id);
 }
-
 function applySettings(){
     setAnimation(idCur, getAnimationData());
 }
@@ -128,8 +148,10 @@ function setAnimation(id, animationData){
 
 function displayAnimationElements(animationDataList){
     var divParent = document.getElementById('divQueue');
-    divParent.innerHTML = "";
-    for ( an of animationDataList ){
+    while (divParent.childElementCount>0){
+        divParent.removeChild(divParent.lastChild);
+    }
+    for (an of animationDataList){
         addAnimationElement(an.id, an.animationData);
     }
 }
@@ -145,6 +167,7 @@ function setAnimationElement(id, animationData){
             divAnimationElement.style.backgroundImage = "linear-gradient(to right, rgb("+animationData.c1.r+","+animationData.c1.g+","+animationData.c1.b+") 20%, rgb("+animationData.c2.r+","+animationData.c2.g+","+animationData.c2.b+") 80%)";
             break;          
     }
+    loadAnimation(id);
 }
 
 function byteToHexString(d) {    
@@ -154,51 +177,60 @@ function byteToHexString(d) {
 function addAnimationElement(id, animationData){
     //socket.emit("addAmimation", {"topic": "rgb", "bytes": [0x14,r1,g1,b1,r2,g2,b2,t>>8,t-(t>>8),n_rep,b_rep]});
     var divParent = document.getElementById('divQueue');
+	var divAnimationElement = document.createElement('div');
 
-	var divAnimationElment = document.createElement('div');
-
-    divAnimationElment.className = "animationElement";
-    divAnimationElment.setAttribute("onclick", "loadAnimation("+id+");");
+    divAnimationElement.className = "animationElement";
+    divAnimationElement.setAttribute("onclick", "loadAnimation("+id+");");
     
 
 	var divIdName = 'animationElement'+id;
-    divAnimationElment.id = divIdName;
+    divAnimationElement.id = divIdName;
     
 
     var button = document.createElement('button')
     button.className = "delButton"
     button.setAttribute("onclick", "removeAnimation("+id+");");
     button.innerHTML = "X";
-    divAnimationElment.appendChild(button);
+    divAnimationElement.appendChild(button);
     
     var inputId = document.createElement("input");
     inputId.type = "number"; 
     inputId.className = "hidden"; 
     inputId.setAttribute("value", id);
-    divAnimationElment.appendChild(inputId);
-
-    divParent.appendChild(divAnimationElment);
+    divAnimationElement.appendChild(inputId);
     
+    if (divParent.childElementCount>0){        
+        var buttonAdd = document.createElement('button')
+        buttonAdd.id = "button"+id;
+        buttonAdd.className = "addButtonBefore";
+        buttonAdd.setAttribute("onclick", "addAnimation(getAnimationData(),"+id+");");
+        buttonAdd.innerHTML = "+";
+        divParent.appendChild(buttonAdd)
+    }
+    divParent.appendChild(divAnimationElement);
+
     setAnimationElement(id, animationData);
 }
 
 function removeAnimation(id){
     // if global mode? from rgb controller call socket remove animationelement.
-    removeAnimationElement(id);
+    //removeAnimationElement(id);
     var i = 0;
     for (var i = 0; i < animationQueue.length; i++){
         if (animationQueue[i].id == id)
         {
             animationQueue.splice(i,1);
-            console.log("removed animation with id: ", id);
+            console.log("removed animation with id: ", id);  
+            displayAnimationElements(animationQueue);
             return;
         }
     }
-    console.log("Warning: Id ", id, " not found while using removeAnimation(Id).");     
+    console.log("Warning: Id ", id, " not found while using removeAnimation(Id).");
 }
 
 function removeAnimationElement(id) {
-	document.getElementById("animationElement"+id).remove();
+    document.getElementById("animationElement"+id).remove();
+    //document.getElementById("addButtonBefore"+id).remove();
 }
 
 function getMode(){
@@ -333,4 +365,4 @@ const bytePauseAnimation = 0x02;
 console.log("Script loaded");
 
 var animationQueue = [{id: 0, animationData: {mode: 0, c1: {r: 255, g: 129, b: 0}, c2: {r: 0, g: 0, b: 0}, t: 1025, p: 40, nr: 5, br: true}},{id: 1, animationData: {mode: 1, c1: {r: 255, g: 0, b: 0}, c2: {r: 0, g: 0, b: 255}, t: 1025, p: 20, nr: 4, br: false}}];
-    
+idNext=2;    
